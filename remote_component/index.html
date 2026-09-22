@@ -2,13 +2,14 @@
 <html lang="vi">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body{margin:0;font:14px system-ui,sans-serif;color:#17233d;background:transparent}
+:root{color-scheme:dark;--text:#e8edf5;--surface:#192233;--border:#46536a;--muted:#b5bfd5}
+body{margin:0;font:14px system-ui,sans-serif;color:var(--text);background:transparent}
 .bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-button,select{font:inherit;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#17233d;cursor:pointer;max-width:100%}
+button,select{font:inherit;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);cursor:pointer;max-width:100%}
 button:disabled,select:disabled{opacity:.5;cursor:wait}
 #finish{background:#2563eb;color:white;border-color:#2563eb}
-#screen{display:block;width:100%;max-width:1100px;height:auto;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;cursor:crosshair;touch-action:pan-y}
-#status{min-height:22px;color:#475569;margin:8px 0}
+#screen{display:block;width:100%;max-width:1100px;height:auto;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;cursor:crosshair;touch-action:pan-y}
+#status{min-height:22px;color:var(--muted);margin:8px 0}
 </style></head>
 <body>
 <div class="bar"><select id="tabs" aria-label="Tab trình duyệt"></select><button data-action="story">Về trang truyện</button><button data-action="close_tab">Đóng tab phụ</button></div>
@@ -31,6 +32,7 @@ tabs.addEventListener('change',()=>send('tab',{tab:Number(tabs.value)}));
 screen.addEventListener('click',event=>{const box=screen.getBoundingClientRect(),css=getComputedStyle(screen),left=parseFloat(css.borderLeftWidth)||0,right=parseFloat(css.borderRightWidth)||0,top=parseFloat(css.borderTopWidth)||0,bottom=parseFloat(css.borderBottomWidth)||0;send('click',{x:(event.clientX-box.left-left)*screen.naturalWidth/(box.width-left-right),y:(event.clientY-box.top-top)*screen.naturalHeight/(box.height-top-bottom)});});
 window.addEventListener('message',event=>{
  if(event.source!==window.parent||event.data.type!=='streamlit:render')return;
+ const theme=event.data.theme;if(theme){const root=document.documentElement;root.style.setProperty('--text',theme.textColor);root.style.setProperty('--surface',theme.secondaryBackgroundColor);root.style.setProperty('--muted',theme.textColor);root.style.colorScheme=theme.base==='light'?'light':'dark';}
  const next=event.data.args.state;if(!next||!next.image)return;state=next;
  if(next.ack===pending||Date.now()-pendingSince>20000)pending=null;
  tabs.replaceChildren(...next.tabs.map(tab=>{const option=document.createElement('option');option.value=tab.index;option.textContent=tab.label;return option;}));
