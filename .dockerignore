@@ -1,0 +1,12 @@
+.git
+.venv*
+.tools
+__pycache__
+.monkeyd_browser_profile
+.browser-cache
+ms-playwright
+.env*
+.streamlit/secrets.toml
+test-artifacts
+*.log
+*.zip

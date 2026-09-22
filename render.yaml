@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: web-text-extractor
+    runtime: docker
+    plan: free
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PUBLIC_DEPLOYMENT
+        value: "true"
+      - key: BROWSER_HEADLESS
+        value: "true"
+      - key: VBEE_CTA_ENABLED
+        value: "true"
