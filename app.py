@@ -6,6 +6,9 @@ from job_runner import run_crawl
 from affiliate import render_affiliates
 from settings import PUBLIC_DEPLOYMENT, BROWSER_HEADLESS
 from text_editor import EDITORS, render_find_replace
+from scraper import hostname_of, is_special_host
+from remote_job import RemoteJob
+from remote_ui import render_remote_job, save_result
 
 BASE_DIR = Path(__file__).resolve().parent
 BLACKLIST_FILE = BASE_DIR / "blacklist.txt"
@@ -26,7 +29,7 @@ mode = st.radio("Chế độ crawl", ["Auto (khuyên dùng)", "Requests", "Playw
 
 if "monkeyd" in url.lower():
     if BROWSER_HEADLESS:
-        st.info("MonkeyD được xử lý bằng Chromium headless. Nếu trang yêu cầu mở khóa thủ công, hãy sử dụng bản local có cửa sổ Chromium; server không thể hiển thị cửa sổ đó cho bạn.")
+        st.info("MonkeyD được xử lý bằng Chromium trên server. Nếu trang cần thao tác, tool sẽ hiện ảnh trình duyệt để bạn bấm trực tiếp, sau đó chọn Lấy nội dung.")
     else:
         st.info("MonkeyD: nếu chương yêu cầu mở Shopee, Chromium sẽ mở để bạn tự thao tác. Tool không tự click và không giả mạo storage.")
 audio_clean = st.checkbox("Clean Text theo workflow 'Làm audio truyện'", value=True)
@@ -50,7 +53,7 @@ with st.expander("⚙ Blacklist Keywords"):
             except OSError:
                 st.warning("Không thể ghi file; blacklist vẫn được áp dụng trong phiên này.")
 
-if st.button("Convert", type="primary", use_container_width=True):
+if st.button("Convert", type="primary", use_container_width=True, disabled=st.session_state.get("remote_job") is not None):
     if not url.strip():
         st.warning("Bạn hãy nhập URL trước.")
     elif PUBLIC_DEPLOYMENT and time.monotonic() - st.session_state.get("last_crawl", 0) < 10:
@@ -65,17 +68,23 @@ if st.button("Convert", type="primary", use_container_width=True):
             st.session_state[key] = ""
         with st.spinner("Đang render và bóc đúng vùng nội dung..."):
             try:
-                result = run_crawl(url, "Auto" if mode.startswith("Auto") else mode,
-                                   audio_clean, st.session_state.blacklist)
-                st.session_state.markdown_result = result["markdown"]
-                st.session_state.text_result = result["text"]
-                st.session_state.raw_text_result = result["raw_text"]
-                st.session_state.title_result = result["title"]
-                st.session_state.clean_stats = result.get("clean_stats", {})
-                st.session_state.source_mode = result.get("source_mode", "unknown")
-                st.success("Đã xử lý xong.")
+                if BROWSER_HEADLESS and is_special_host(hostname_of(url)):
+                    st.session_state.remote_job = RemoteJob(url, audio_clean, st.session_state.blacklist)
+                    st.rerun()
+                else:
+                    result = run_crawl(url, "Auto" if mode.startswith("Auto") else mode,
+                                       audio_clean, st.session_state.blacklist)
+                    save_result(result)
+                    st.success("Đã xử lý xong.")
             except Exception as e:
                 st.error(str(e))
+
+if st.session_state.get("remote_job") is not None:
+    render_remote_job()
+if message := st.session_state.pop("remote_notice", None):
+    st.success(message)
+if message := st.session_state.pop("remote_error", None):
+    st.error(message)
 
 if st.session_state.raw_text_result:
     render_affiliates()

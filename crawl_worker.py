@@ -5,11 +5,18 @@ import json
 import sys
 
 from cleaner import blacklist_override
-from scraper import scrape, scrape_auto
+from scraper import scrape, scrape_auto, manual_unlock_handler
 
 
 def main():
-    payload = json.load(sys.stdin)
+    interactive = "--interactive" in sys.argv
+    payload = json.loads(sys.stdin.readline()) if interactive else json.load(sys.stdin)
+    bridge = None
+    handler_token = None
+    if interactive:
+        from remote_browser import BrowserBridge
+        bridge = BrowserBridge(sys.stdout)
+        handler_token = manual_unlock_handler.set(bridge.handle_unlock)
     token = blacklist_override.set(payload.get("blacklist"))
     try:
         with contextlib.redirect_stdout(io.StringIO()):
@@ -28,7 +35,12 @@ def main():
         response = {"error": message}
     finally:
         blacklist_override.reset(token)
-    sys.stdout.write(json.dumps(response, ensure_ascii=True))
+        if handler_token is not None:
+            manual_unlock_handler.reset(handler_token)
+    if bridge:
+        bridge.publish({"type": "error" if "error" in response else "result", **response})
+    else:
+        sys.stdout.write(json.dumps(response, ensure_ascii=True))
 
 
 if __name__ == "__main__":

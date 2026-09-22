@@ -1,4 +1,5 @@
 import html as html_lib
+from contextvars import ContextVar
 import ipaddress
 import re
 import socket
@@ -43,6 +44,7 @@ SPECIAL_ROOT_SELECTORS = [
 
 BASE_DIR = Path(__file__).resolve().parent
 MONKEYD_PROFILE_DIR = BASE_DIR / ".monkeyd_browser_profile"
+manual_unlock_handler = ContextVar("manual_unlock_handler", default=None)
 MONKEYD_LOCK_MARKERS = (
     "MỞ ỨNG DỤNG SHOPEE",
     "ĐỂ ĐỌC TOÀN BỘ CHƯƠNG TRUYỆN",
@@ -565,7 +567,10 @@ def fetch_with_playwright(url: str) -> dict:
 
                 if BROWSER_HEADLESS:
                     if _monkeyd_is_locked(page):
-                        raise RuntimeError("MonkeyD: trang yêu cầu thao tác mở khóa trực tiếp. Server headless không thể thực hiện thao tác này; hãy dùng bản local có cửa sổ Chromium.")
+                        handler = manual_unlock_handler.get()
+                        if handler is None:
+                            raise RuntimeError("MonkeyD: trang yêu cầu thao tác mở khóa trực tiếp. Hãy dùng chế độ điều khiển Chromium trong ứng dụng.")
+                        handler(context, page, url)
                 else:
                     _handle_monkeyd_manual_unlock(context, page, url)
 
