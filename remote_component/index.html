@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{margin:0;font:14px system-ui,sans-serif;color:#17233d;background:transparent}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+button,select{font:inherit;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#17233d;cursor:pointer;max-width:100%}
+button:disabled,select:disabled{opacity:.5;cursor:wait}
+#finish{background:#2563eb;color:white;border-color:#2563eb}
+#screen{display:block;width:100%;max-width:1100px;height:auto;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box;cursor:crosshair;touch-action:pan-y}
+#status{min-height:22px;color:#475569;margin:8px 0}
+</style></head>
+<body>
+<div class="bar"><select id="tabs" aria-label="Tab trình duyệt"></select><button data-action="story">Về trang truyện</button><button data-action="close_tab">Đóng tab phụ</button></div>
+<div class="bar"><button data-action="up">↑ Cuộn lên</button><button data-action="down">↓ Cuộn xuống</button><button data-action="reload">Tải lại trang</button><button id="finish" data-action="finish">Lấy nội dung</button></div>
+<p id="status" role="status">Đang kết nối…</p>
+<img id="screen" alt="Ảnh Chromium trên server. Bấm vào liên kết trong ảnh để thao tác." draggable="false">
+<script>
+let state=null, displayedFrame=null, pending=null, pendingSince=0;
+const screen=document.getElementById('screen'), tabs=document.getElementById('tabs'), status=document.getElementById('status');
+function post(type,extra={}){window.parent.postMessage({isStreamlitMessage:true,type,...extra},'*');}
+function height(){post('streamlit:setFrameHeight',{height:document.body.scrollHeight+8});}
+function busy(){document.querySelectorAll('button,select').forEach(el=>el.disabled=!!pending);screen.style.opacity=pending?'.7':'1';}
+function send(action,extra={}){
+ if(!state||!displayedFrame||pending)return;
+ pending=globalThis.crypto?.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2);pendingSince=Date.now();busy();status.textContent='Đang gửi thao tác…';
+ post('streamlit:setComponentValue',{value:{id:pending,frame:displayedFrame,action,...extra},dataType:'json'});
+}
+document.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',()=>send(el.dataset.action)));
+tabs.addEventListener('change',()=>send('tab',{tab:Number(tabs.value)}));
+screen.addEventListener('click',event=>{const box=screen.getBoundingClientRect(),css=getComputedStyle(screen),left=parseFloat(css.borderLeftWidth)||0,right=parseFloat(css.borderRightWidth)||0,top=parseFloat(css.borderTopWidth)||0,bottom=parseFloat(css.borderBottomWidth)||0;send('click',{x:(event.clientX-box.left-left)*screen.naturalWidth/(box.width-left-right),y:(event.clientY-box.top-top)*screen.naturalHeight/(box.height-top-bottom)});});
+window.addEventListener('message',event=>{
+ if(event.source!==window.parent||event.data.type!=='streamlit:render')return;
+ const next=event.data.args.state;if(!next||!next.image)return;state=next;
+ if(next.ack===pending||Date.now()-pendingSince>20000)pending=null;
+ tabs.replaceChildren(...next.tabs.map(tab=>{const option=document.createElement('option');option.value=tab.index;option.textContent=tab.label;return option;}));
+ tabs.value=next.active;
+ status.textContent=next.notice||(next.ready?'Nội dung đã hiện. Bấm “Lấy nội dung” khi bạn sẵn sàng.':'Bấm trực tiếp vào liên kết/nút trong ảnh để thực hiện yêu cầu của trang.');
+ const image=new Image();const version=next.frame;image.onload=()=>{if(state.frame!==version)return;screen.src=image.src;displayedFrame=version;busy();height();};image.src='data:image/jpeg;base64,'+next.image;
+ busy();height();
+});
+new ResizeObserver(height).observe(document.body);
+post('streamlit:componentReady',{apiVersion:1});height();
+</script></body></html>
