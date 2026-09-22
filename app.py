@@ -3,7 +3,7 @@ import time
 from pathlib import Path
 import streamlit as st
 from job_runner import run_crawl
-from affiliate import render_affiliates
+from affiliate import render_affiliates, render_vbee_banner
 from settings import PUBLIC_DEPLOYMENT, BROWSER_HEADLESS
 from text_editor import EDITORS, render_find_replace
 from scraper import hostname_of, is_special_host
@@ -16,6 +16,7 @@ BLACKLIST_FILE = BASE_DIR / "blacklist.txt"
 st.set_page_config(page_title="Lấy và làm sạch văn bản web | Web Text Extractor", page_icon="📄", layout="wide")
 st.title("📄 Lấy và làm sạch văn bản web")
 st.caption("Trích xuất nội dung từ URL, giữ bản gốc, làm sạch văn bản truyện và tải xuống TXT hoặc Markdown.")
+render_vbee_banner()
 with st.expander("Hướng dẫn sử dụng"):
     st.write("1. Dán URL bài viết hoặc chương truyện.\n2. Chọn Auto hoặc Playwright cho trang cần JavaScript.\n3. Bấm Convert, kiểm tra Raw Text và tải kết quả.")
     st.caption("Chỉ xử lý nội dung bạn có quyền sử dụng. Kết quả nằm trong phiên sử dụng, không được ghi vào kho lưu trữ của ứng dụng.")
